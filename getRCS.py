@@ -5,6 +5,7 @@ from TestCase import *
 import matplotlib.pyplot as plt
 import numpy as np
 
+
 def RCS_vs_freq(radius, ratio, background_material, sphere_material, sensor_location, save_file=None, show_plot=1):
     '''
         Calculates the RCS vs frequency for a sphere defined by 'radius' and 'sphere_material'
@@ -15,28 +16,34 @@ def RCS_vs_freq(radius, ratio, background_material, sphere_material, sensor_loca
 
     '''
     wavelength = radius / ratio
-    frequency = background_material.getPhaseVelocity(3e8 / wavelength)  / wavelength
+    frequency = background_material.getPhaseVelocity(
+        3e8 / wavelength) / wavelength
 
     [E_r, E_theta, E_phi, H_r, H_theta, H_phi] = \
-        getDielectricSphereFieldUnderPlaneWave(radius, sphere_material, background_material, sensor_location, frequency)
-    E = (np.stack((E_r,E_theta,E_phi), axis=0))
-    mono_RCS = 4*np.pi* ( norm(sensor_location)**2 ) * np.sum( (E * np.conj(E)) , 0)
+        getDielectricSphereFieldUnderPlaneWave(
+            radius, sphere_material, background_material, sensor_location, frequency)
+    E = (np.stack((E_r, E_theta, E_phi), axis=0))
+    mono_RCS = 4*np.pi * (norm(sensor_location)**2) * \
+        np.sum((E * np.conj(E)), 0)
 
-    #plotting and saving plot
+    # plotting and saving plot
     if show_plot:
-        plotOneMonoRCS(radius, sphere_material, background_material, mono_RCS, frequency=frequency, savefile = save_file)
-    
-    #writing mono RCS data to text file, if filename is given
+        plotOneMonoRCS(radius, sphere_material, background_material,
+                       mono_RCS, frequency=frequency, savefile=save_file)
+
+    # writing mono RCS data to text file, if filename is given
     if save_file:
-        saveMonoRCSData(save_file, mono_RCS, frequency, sphere_material, radius)
+        saveMonoRCSData(save_file, mono_RCS, frequency,
+                        sphere_material, radius)
 
     return (frequency, mono_RCS)
 
-def Bistatic_RCS(radius, frequency, background_material, sphere_material, distance, phi, save_filename =None, show_plot = 1):
+
+def Bistatic_RCS(radius, frequency, background_material, sphere_material, distance, phi, save_filename=None, show_plot=1):
     '''
         Calculates the bistatic RCS of a spherical object at the origin, defined by 
         sphere (DielectricMaterial) and radius, at a certain frequency.
-        
+
         Inputs:
           radius:               radius of sphere (float, meters)
           frequency:            frequency of incident wave (float, Hz)
@@ -54,34 +61,38 @@ def Bistatic_RCS(radius, frequency, background_material, sphere_material, distan
           Theta = pi is the radial direction to the source point. 
           Plot saved as a .png file, data saved to .txt file.
     '''
-    nang = 100
-    theta = np.linspace(0,np.pi,nang)
-    #distance = 2000
-    #phi = 0
+    nang = 180
+    theta = np.linspace(0, np.pi, nang)
+    # distance = 2000
+    # phi = 0
 
     bi_RCS = np.zeros((nang,), np.complex128)
-    for k in range(0,nang):
+    for k in range(0, nang):
         sensor_location = sphToCart(distance, theta[k], phi)
         if (type(frequency) == int or type(frequency) == float):
             frequency = np.array([frequency])
 
         [E_r, E_theta, E_phi, H_r, H_theta, H_phi] = \
-            getDielectricSphereFieldUnderPlaneWave(radius, sphere_material, background_material, sensor_location, frequency)
-        E = (np.stack((E_r,E_theta,E_phi), axis=0))
-        bi_RCS[k] = 4*np.pi* ( norm(sensor_location)**2 ) * np.sum( (E * np.conj(E)))
+            getDielectricSphereFieldUnderPlaneWave(
+                radius, sphere_material, background_material, sensor_location, frequency)
+        E = (np.stack((E_r, E_theta, E_phi), axis=0))
+        bi_RCS[k] = 4*np.pi * (norm(sensor_location)**2) * \
+            np.sum((E * np.conj(E)))
 
-    #plotting and saving plot
+    # plotting and saving plot
     if save_filename:
         save_file = save_filename + ".png"
     if show_plot:
-        plotBiRCS(radius, sphere_material, frequency, bi_RCS, theta, savefile = save_filename)
+        plotBiRCS(radius, sphere_material, frequency,
+                  bi_RCS, theta, savefile=save_filename)
 
-    #writing mono RCS data to text file, if filename is given
+    # writing mono RCS data to text file, if filename is given
     if save_filename:
         data_file = save_filename + ".txt"
         saveBiRCSData(data_file, bi_RCS, theta, frequency, sphere_material)
 
-    return (theta,bi_RCS)
+    return (theta, bi_RCS)
+
 
 def plotOneMonoRCS(radius, sphere, background, mono_RCS, *args, **kwargs):
     '''
@@ -91,42 +102,40 @@ def plotOneMonoRCS(radius, sphere, background, mono_RCS, *args, **kwargs):
             frequency (logarithmic)
             wavelength (logarigthmic)
             ratio (normal)
-        
+
         example usage:
         sphere = DielectricMaterial(2.56,0.1, name="silicon")
         vacuum = DielectricMaterial(1,0) #background_material
         plotOneMonoRCS(radius, sphere, vacuum, my_mono_RCS_data, frequency = my_frequency_values)
         plotOneMonoRCS(radius, sphere, vacuum, my_mono_RCS_data, ratio = my_ratio, savefile = 'figure1.png')
     '''
-    frequency  = np.atleast_1d(kwargs.get('frequency', []))
-    ratio      = np.atleast_1d(kwargs.get('ratio', []))
-    wavelength = np.atleast_1d(kwargs.get('wavelength', []))
-    savefile   = kwargs.get('savefile', '')
+    frequency = kwargs.get('frequency', "N/A")
+    ratio = kwargs.get('ratio', "N/A")
+    wavelength = kwargs.get('wavelength', "N/A")
+    savefile = kwargs.get('savefile', '')
 
-    if ( frequency.size > 0 ):
-	    xseries = frequency
-    elif ( ratio.size > 0 ):
-	    xseries = ratio
-    elif ( wavelength.size > 0 ):
-	    xseries = wavelength
+    if (frequency != "N/A"):
+        xseries = frequency
+    elif (ratio != "N/A"):
+        xseries = ratio
+    elif (wavelength != "N/A"):
+        xseries = wavelength
     else:
         print("wrong input (in plotOneMonoRCS")
         return
-    
 
     plt.grid(True, which="both", ls="--")
     plt.ylabel(r'Mono-Static RCS ($m^2$)')
 
-    if ( frequency.size > 0 ):
+    if (frequency != "N/A"):
         plt.loglog(xseries, mono_RCS)
         plt.xlabel("Frequency (Hz)")
-    elif ( ratio.size > 0 ):
+    elif (ratio != "N/A"):
         plt.semilogy(xseries, mono_RCS)
         plt.xlabel("Sphere radius in wavelengths")
-    elif ( wavelength.size > 0 ):
+    elif (wavelength != "N/A"):
         plt.loglog(xseries, mono_RCS)
         plt.xlabel("Wavelength (m)")
-    
 
     title_str = ""
 
@@ -136,29 +145,30 @@ def plotOneMonoRCS(radius, sphere, background, mono_RCS, *args, **kwargs):
         material = "Lossy Dielectric"
     else:
         material = "Conductor"
-    
+
     if sphere.name:
         material = sphere.name + " Sphere"
         title_str += material
     else:
-        material_params = r'$\epsilon_r$ = ' + str(round(sphere.epsilon_r,2)) + \
-            r', $\mu_r$ = ' + str(round(sphere.mu_r,2)) + \
+        material_params = r'$\epsilon_r$ = ' + str(round(sphere.epsilon_r, 2)) + \
+            r', $\mu_r$ = ' + str(round(sphere.mu_r, 2)) + \
             r', $\sigma$ = ' + "{0:.2f}".format(sphere.sigma_e) + " S/m" + \
-            ", radius = " + str(round(radius,2)) + " m" 
+            ", radius = " + str(round(radius, 2)) + " m"
         title_str += material + " (" + material_params + ")"
-    
+
     if (background and background.name):
         title_str += " in " + background.name
-    
+
     plt.title(title_str)
 
     if (savefile):
         if not (savefile.endswith(".png")):
             savefile += ".png"
-        plt.savefig(savefile, dpi=80)  
+        plt.savefig(savefile, dpi=80)
     plt.show()
 
-def plotBiRCS(radius, sphere, frequency, bi_RCS, theta, savefile =None):
+
+def plotBiRCS(radius, sphere, frequency, bi_RCS, theta, savefile=None):
     '''
         plots the bistatic RCS for a spherical object, defined by 
         sphere (DielectricMaterial) and radius, at a certain frequency.
@@ -167,7 +177,7 @@ def plotBiRCS(radius, sphere, frequency, bi_RCS, theta, savefile =None):
     fig, ax = plt.subplots()
     plt.semilogy(theta, bi_RCS)
     plt.grid(True, which="both", ls="--")
-    
+
     plt.ylabel(r'Bi-Static RCS ($m^2$)')
     plt.xlabel(r'Angle $\theta$ (rad)')
 
@@ -177,17 +187,18 @@ def plotBiRCS(radius, sphere, frequency, bi_RCS, theta, savefile =None):
         material = "Lossy Dielectric"
     else:
         material = "Conductor"
-    
-    plt.title( "Bi-Static RCS for " + material + " Sphere at " + \
-            "{0:.2e}".format(frequency[0]) + " Hz \n(" + \
-            r' $\epsilon_r$ = ' + str(round(sphere.epsilon_r,2)) + \
-            r', $\mu_r$ = ' + str(round(sphere.mu_r,2)) + \
-            r', $\sigma$ = ' + '{:.2e}'.format(sphere.sigma_e) + " S/m" + \
-            ", radius = " + str(round(radius,2))+ " m)"    )
-    
+
+    plt.title("Bi-Static RCS for " + material + " Sphere at " +
+              "{0:.2e}".format(frequency[0]) + " Hz \n(" +
+              r' $\epsilon_r$ = ' + str(round(sphere.epsilon_r, 2)) +
+              r', $\mu_r$ = ' + str(round(sphere.mu_r, 2)) +
+              r', $\sigma$ = ' + '{:.2e}'.format(sphere.sigma_e) + " S/m" +
+              ", radius = " + str(round(radius, 2)) + " m)")
+
     if (savefile):
-        plt.savefig(savefile, figsize=(8,6)) 
+        plt.savefig(savefile, figsize=(8, 6))
     plt.show()
+
 
 def saveMonoRCSData(savefile, mono_RCS, frequency, sphere, radius):
     '''
@@ -202,24 +213,26 @@ def saveMonoRCSData(savefile, mono_RCS, frequency, sphere, radius):
     if (not savefile.endswith(".txt")):
         savefile += ".txt"
     data_file = open(savefile, "w")
-    header_line = "eps_r\t" + str(round(sphere.epsilon_r,2))+ \
-                    "\tmu_r\t" + str(round(sphere.mu_r,2)) + \
-                    "\tsigma\t" + "{0:.2e}".format(sphere.sigma_e) + \
-                    "\tradius\t" + str(round(radius,2)) + "\n"
+    header_line = "eps_r\t" + str(round(sphere.epsilon_r, 2)) + \
+        "\tmu_r\t" + str(round(sphere.mu_r, 2)) + \
+        "\tsigma\t" + "{0:.2e}".format(sphere.sigma_e) + \
+        "\tradius\t" + str(round(radius, 2)) + "\n"
     data_file.write(header_line)
-    
+
     column_headers = "frequency(Hz)\tRCS(m^2)\n"
     data_file.write(column_headers)
 
     mono_RCS = mono_RCS.flatten()
     frequency = frequency.flatten()
     n = min(len(frequency), len(mono_RCS))
-    
-    for i in range(0,n):
-        line = "{:.9e}".format(frequency[i]) + "\t" + "{:.9e}".format(np.real(mono_RCS[i])) + "\n"
+
+    for i in range(0, n):
+        line = "{:.9e}".format(
+            frequency[i]) + "\t" + "{:.9e}".format(np.real(mono_RCS[i])) + "\n"
         data_file.write(line)
 
     data_file.close()
+
 
 def saveBiRCSData(savefile, bi_RCS, theta, frequency, sphere):
     '''
@@ -238,26 +251,27 @@ def saveBiRCSData(savefile, bi_RCS, theta, frequency, sphere):
         frequency = np.array(frequency).flatten()
         frequency = float(frequency[0])
 
-
     data_file = open(savefile, "w")
-    header_line =   "freq(Hz)\t" + "{0:.2e}".format(frequency) + \
-                    "\teps_r\t" + str(round(sphere.epsilon_r,2))+ \
-                    "\tmu_r\t" + str(round(sphere.mu_r,2)) + \
-                    "\tsigma\t" + "{0:.2e}".format(sphere.sigma_e) + "\n"
+    header_line = "freq(Hz)\t" + "{0:.2e}".format(frequency) + \
+        "\teps_r\t" + str(round(sphere.epsilon_r, 2)) + \
+        "\tmu_r\t" + str(round(sphere.mu_r, 2)) + \
+        "\tsigma\t" + "{0:.2e}".format(sphere.sigma_e) + "\n"
     data_file.write(header_line)
-    
+
     column_headers = "theta(rad)\tRCS(m^2)\n"
     data_file.write(column_headers)
 
-    bi_RCS = np.reshape(bi_RCS, (bi_RCS.size,1)).flatten()
-    theta = np.reshape(theta, (theta.size,1)).flatten()
+    bi_RCS = np.reshape(bi_RCS, (bi_RCS.size, 1)).flatten()
+    theta = np.reshape(theta, (theta.size, 1)).flatten()
     n = min(theta.size, bi_RCS.size)
-    
-    for i in range(0,n):
-        line = "{:.9e}".format(theta[i]) + "\t" + "{:.9e}".format(np.real(bi_RCS[i])) + "\n"
+
+    for i in range(0, n):
+        line = "{:.9e}".format(theta[i]) + "\t" + \
+            "{:.9e}".format(np.real(bi_RCS[i])) + "\n"
         data_file.write(line)
 
     data_file.close()
+
 
 def convertToRatio(radius, background_material, *args, **kwargs):
     '''
@@ -276,21 +290,22 @@ def convertToRatio(radius, background_material, *args, **kwargs):
         vacuum = DielectricMaterial(1,0)
         ratio = convertToRatio(1, vacuum, frequency = input_freq )
     '''
-    c = 299792458 #speed of light
+    c = 299792458  # speed of light
     freq = kwargs.get('frequency', 'None')
     lambd = kwargs.get('wavelength', 'None')
     rat = kwargs.get('ratio', 'None')
     if (type(rat) is not str):
         return rat
     if (type(freq) is not str):
-        return freq*(radius / (background_material.getPhaseVelocity(freq)) )
+        return freq*(radius / (background_material.getPhaseVelocity(freq)))
     if (type(lambd) is not str):
         return radius / lambd
 
-def Compare_RCS_vs_freq(test_cases, test_parameters, save_file = None):
+
+def Compare_RCS_vs_freq(test_cases, test_parameters, save_file=None):
     '''
         Plots several different monostatic RCS vs frequency series on the same figure.
-        
+
         Inputs:
             test_cases: list of TestCase objects which define 
                 sphere and background material, sphere radius
@@ -302,31 +317,34 @@ def Compare_RCS_vs_freq(test_cases, test_parameters, save_file = None):
     fig, ax = plt.subplots()
     legend_entries = []
     for case in test_cases:
-        #calcilating mono RCS as usual
+        # calcilating mono RCS as usual
         [E_r, E_theta, E_phi, H_r, H_theta, H_phi] = \
-            getDielectricSphereFieldUnderPlaneWave(case.radius, case.sphere_material, case.background_material, \
-                                                    test_parameters.sensor_location, test_parameters.frequency)
-        E = (np.stack((E_r,E_theta,E_phi), axis=0))
-        mono_RCS = 4*np.pi* ( norm(test_parameters.sensor_location)**2 ) * np.sum( (E * np.conj(E)) , 0)
-        
-        #print(mono_RCS)
-        #print(test_parameters.frequency)
-        #plotting as usual
+            getDielectricSphereFieldUnderPlaneWave(case.radius, case.sphere_material, case.background_material,
+                                                   test_parameters.sensor_location, test_parameters.frequency)
+        E = (np.stack((E_r, E_theta, E_phi), axis=0))
+        mono_RCS = 4*np.pi * \
+            (norm(test_parameters.sensor_location)**2) * \
+            np.sum((E * np.conj(E)), 0)
+
+        # print(mono_RCS)
+        # print(test_parameters.frequency)
+        # plotting as usual
         plt.loglog(test_parameters.frequency, mono_RCS)
-        
+
         series_name = "Sphere"
         if case.sphere_material.name:
             series_name = case.sphere_material.name + " " + series_name
         else:
-            series_name += r'($\epsilon_r$ = ' + str(round(case.sphere_material.epsilon_r,2)) + \
-             r', $\sigma$ = ' + "{0:.2f}".format(case.sphere_material.sigma_e) + " S/m)"
+            series_name += r'($\epsilon_r$ = ' + str(round(case.sphere_material.epsilon_r, 2)) + \
+                r', $\sigma$ = ' + \
+                "{0:.2f}".format(case.sphere_material.sigma_e) + " S/m)"
         if case.background_material.name:
             series_name += " in " + case.background_material.name
- 
-        legend_entries.append(series_name) 
-    
+
+        legend_entries.append(series_name)
+
     plt.grid(True, which="both", ls="--")
-    
+
     plt.ylabel(r'Mono-Static RCS ($m^2$)')
     plt.xlabel("Frequency (Hz)")
     plt.legend(legend_entries, loc='best')
@@ -334,10 +352,11 @@ def Compare_RCS_vs_freq(test_cases, test_parameters, save_file = None):
 
     if (save_file):
         save_filename = save_file + ".png"
-        plt.savefig(save_filename, figsize=(8,6)) 
+        plt.savefig(save_filename, figsize=(8, 6))
     plt.show()
 
-def Compare_Bistatic_RCS(test_cases, test_parameters, save_file = None):
+
+def Compare_Bistatic_RCS(test_cases, test_parameters, save_file=None):
     '''
         Plots the RCS versus angle from theta = 0 to pi
         Inputs: 
@@ -345,7 +364,7 @@ def Compare_Bistatic_RCS(test_cases, test_parameters, save_file = None):
                             *The various spheres (with different radius, 
                             material for example) are specified within 
                             test_cases (class TestCase)
-        
+
           test_parameters:  a single TestParameters object.
                             *The frequency, radius, and angle of azimuth phi 
                             are specified within test_parameters 
@@ -375,15 +394,15 @@ def Compare_Bistatic_RCS(test_cases, test_parameters, save_file = None):
 
             Compare_RCS_vs_freq([case1,case2], param1, "two_material_comparison_example")
     '''
-    #checking the frequency input
+    # checking the frequency input
     frequency = test_parameters.frequency
     if (type(frequency) == int or type(frequency) == float):
         frequency = np.array([frequency])
     if (type(frequency) == list or type(frequency) == np.ndarray):
         frequency = np.array(frequency).flatten()
-    
-    #just a single bistatic RCS plot
-    if (len(test_cases) == 1 and frequency.size == 1 ):
+
+    # just a single bistatic RCS plot
+    if (len(test_cases) == 1 and frequency.size == 1):
         print("\tCompare_Bistatic_RCS cases 1, frequency 1")
         case = test_cases[0]
         param = test_parameters[0]
@@ -394,12 +413,13 @@ def Compare_Bistatic_RCS(test_cases, test_parameters, save_file = None):
         frequency = param.frequency
 
         [distance, theta, phi] = sphToCart(sensor_location)
-        #generate RCS vs theta data
-        (theta, bi_RCS) = Bistatic_RCS(radius, frequency, background, sphere, distance, phi, save_filename =None, show_plot=0)
+        # generate RCS vs theta data
+        (theta, bi_RCS) = Bistatic_RCS(radius, frequency, background,
+                                       sphere, distance, phi, save_filename=None, show_plot=0)
         # plot the data
-        plotBiRCS(radius, sphere, frequency, bi_RCS, theta, savefile =save_file)
-    
-    #multiple spheres, one frequency
+        plotBiRCS(radius, sphere, frequency, bi_RCS, theta, savefile=save_file)
+
+    # multiple spheres, one frequency
     if (len(test_cases) >= 1 and frequency.size == 1):
         print("\tCompare_Bistatic_RCS cases many, frequency 1")
         fig, ax = plt.subplots()
@@ -413,36 +433,39 @@ def Compare_Bistatic_RCS(test_cases, test_parameters, save_file = None):
             x = test_parameters.sensor_location[0]
             y = test_parameters.sensor_location[1]
             z = test_parameters.sensor_location[2]
-            [distance, phi, theta] = cartToSph(x,y,z)
+            [distance, phi, theta] = cartToSph(x, y, z)
 
-            (theta, bi_RCS) = Bistatic_RCS(radius, frequency, background, sphere, distance, phi, show_plot=0)               
+            (theta, bi_RCS) = Bistatic_RCS(radius, frequency,
+                                           background, sphere, distance, phi, show_plot=0)
             plt.semilogy(theta, bi_RCS)
-            
+
             series_name = "Sphere"
             if case.sphere_material.name:
                 series_name = case.sphere_material.name + " " + series_name
             else:
-                series_name += r'($\epsilon_r$ = ' + str(round(case.sphere_material.epsilon_r,2)) + \
-                r', $\sigma$ = ' + "{0:.2f}".format(case.sphere_material.sigma_e) + " S/m)"
+                series_name += r'($\epsilon_r$ = ' + str(round(case.sphere_material.epsilon_r, 2)) + \
+                    r', $\sigma$ = ' + \
+                    "{0:.2f}".format(case.sphere_material.sigma_e) + " S/m)"
             if case.background_material.name:
                 series_name += " in " + case.background_material.name
-    
-            legend_entries.append(series_name) 
-        
+
+            legend_entries.append(series_name)
+
         plt.ylabel(r'Bi-Static RCS ($m^2$)')
         plt.xlabel(r'Angle $\theta$ (rad)')
         plt.grid(True, which="both", ls="--")
-        
+
         plt.legend(legend_entries, loc='best')
-        plt.title("Bistatic RCS Comparison for Different Materias at " + "{0:.2e}".format(frequency[0]) + " Hz")
+        plt.title("Bistatic RCS Comparison for Different Materias at " +
+                  "{0:.2e}".format(frequency[0]) + " Hz")
 
         if (save_file):
             save_filename = save_file + ".png"
-            plt.savefig(save_filename) 
+            plt.savefig(save_filename, figsize=(8, 6))
         plt.show()
-    
-    #one sphere, multiple frequency
-    elif(len(test_cases) == 1 and frequency.size > 1):
+
+    # one sphere, multiple frequency
+    elif (len(test_cases) == 1 and frequency.size > 1):
         print("\tCompare_Bistatic_RCS cases 1, frequency many")
         case = test_cases[0]
         radius = case.radius
@@ -452,46 +475,49 @@ def Compare_Bistatic_RCS(test_cases, test_parameters, save_file = None):
         x = test_parameters.sensor_location[0]
         y = test_parameters.sensor_location[1]
         z = test_parameters.sensor_location[2]
-        [distance, phi, theta] = cartToSph(x,y,z)
+        [distance, phi, theta] = cartToSph(x, y, z)
 
         fig, ax = plt.subplots()
         legend_entries = []
 
         for k in range(frequency.size):
-            #print("frequency: " , frequency)
-            #print("frequency[k]: ", frequency[k], type(frequency[k]))
-            (theta, bi_RCS) = Bistatic_RCS(radius, frequency[k:k+1], background, sphere, distance, phi, show_plot=0)               
+            # print("frequency: " , frequency)
+            # print("frequency[k]: ", frequency[k], type(frequency[k]))
+            (theta, bi_RCS) = Bistatic_RCS(
+                radius, frequency[k:k+1], background, sphere, distance, phi, show_plot=0)
             plt.semilogy(theta, bi_RCS)
-            
+
             series_name = "Sphere"
             if case.sphere_material.name:
                 series_name = case.sphere_material.name + " " + series_name
             else:
-                series_name += r'($\epsilon_r$ = ' + str(round(case.sphere_material.epsilon_r,2)) + \
-                r', $\sigma$ = ' + "{0:.2f}".format(case.sphere_material.sigma_e) + " S/m)"
+                series_name += r'($\epsilon_r$ = ' + str(round(case.sphere_material.epsilon_r, 2)) + \
+                    r', $\sigma$ = ' + \
+                    "{0:.2f}".format(case.sphere_material.sigma_e) + " S/m)"
             if case.background_material.name:
                 series_name += " in " + case.background_material.name
-            series_name += " at "+ "{0:.2e}".format(frequency[k]) + " Hz"
-    
-            legend_entries.append(series_name) 
-        
+            series_name += " at " + "{0:.2e}".format(frequency[k]) + " Hz"
+
+            legend_entries.append(series_name)
+
         plt.ylabel(r'Bi-Static RCS ($m^2$)')
         plt.xlabel(r'Angle $\theta$ (rad)')
         plt.grid(True, which="both", ls="--")
-        
+
         plt.legend(legend_entries, loc='best')
         plt.title("Bistatic RCS Comparison for Different Frequencies")
 
         if (save_file):
             save_filename = save_file + ".png"
-            plt.savefig(save_filename) 
-        plt.show() 
-        
-    #extra: catching errors
+            plt.savefig(save_filename, figsize=(8, 6))
+        plt.show()
+
+    # extra: catching errors
     elif (len(test_cases) > 1 and frequency.size > 1):
         print("inputs not supported")
     else:
         print("error in compare_bistatic_rcs")
+
 
 def plotFromFile(filenames, plt_type, save_file=''):
     '''
@@ -504,7 +530,7 @@ def plotFromFile(filenames, plt_type, save_file=''):
                         bistatic RCS plot. otherwise, if 'mono', or
                         'monostatic', returns monostatic plot.
             save_file:  If given, saves plot to this filename as png 
-        
+
         Note: 
             * Data files are assumed to be in the same format as this 
               code exports. See saveMonoRCSData() and saveBiRCSData()
@@ -515,49 +541,51 @@ def plotFromFile(filenames, plt_type, save_file=''):
     if (plt_type == 'mono' or plt_type == 'monostatic'):
         fig, ax = plt.subplots()
         legend_entries = []
-        
+
         for filename in filenames:
             data_file = open(filename, "r")
             line_1 = data_file.readline()
             # line 1:
-            #eps_r	2.56	mu_r	1	sigma	3.00e-02
+            # eps_r	2.56	mu_r	1	sigma	3.00e-02
             [eps_r, mu_r, sigma, radius] = line_1.split()[1::2]
-            sphere = DielectricMaterial(float(eps_r), float(sigma), float(mu_r),0)
+            sphere = DielectricMaterial(
+                float(eps_r), float(sigma), float(mu_r), 0)
             radius = float(radius)
 
-            #skip next line which is column header
-            #frequency(Hz)	RCS(m^2)
+            # skip next line which is column header
+            # frequency(Hz)	RCS(m^2)
             data_file.readline()
 
-            frequency, monoRCS = [],[]
+            frequency, monoRCS = [], []
             lines = data_file.readlines()
             for line in lines:
                 values = line.split()
                 frequency.append(float(values[0]))
                 monoRCS.append(float(values[1]))
-            
+
             frequency = np.array(frequency).flatten()
             monoRCS = np.array(monoRCS).flatten()
             data_file.close()
 
-            #print("frequency: \n", frequency)
-            #print("\nmonoRCS: \n", monoRCS)
-            #print("\n just before plot")
-            
+            # print("frequency: \n", frequency)
+            # print("\nmonoRCS: \n", monoRCS)
+            # print("\n just before plot")
+
             plt.loglog(frequency, monoRCS)
 
-            series_name = ""   
+            series_name = ""
             if sphere.name:
                 material = sphere.name
-                series_name += material + "radius = " + str(round(radius,2)) + " m)"         
+                series_name += material + "radius = " + \
+                    str(round(radius, 2)) + " m)"
             else:
-                descriptor = r'($\epsilon_r$ = ' + str(round(sphere.epsilon_r,2)) + \
-                        r', $\sigma$ = ' + "{0:.2f}".format(sphere.sigma_e) + " S/m" + \
-                        ", radius = " + str(round(radius,2)) + " m)"
-                series_name +=  descriptor
-            
-            legend_entries.append(series_name) 
-        
+                descriptor = r'($\epsilon_r$ = ' + str(round(sphere.epsilon_r, 2)) + \
+                    r', $\sigma$ = ' + "{0:.2f}".format(sphere.sigma_e) + " S/m" + \
+                    ", radius = " + str(round(radius, 2)) + " m)"
+                series_name += descriptor
+
+            legend_entries.append(series_name)
+
         plt.grid(True, which="both", ls="--")
         plt.ylabel(r'Mono-Static RCS ($m^2$)')
         plt.xlabel("Frequency (Hz)")
@@ -566,56 +594,58 @@ def plotFromFile(filenames, plt_type, save_file=''):
 
         if save_file:
             save_file += ".png"
-            plt.savefig(save_file, figsize=(8,6))
+            plt.savefig(save_file, figsize=(8, 6))
         plt.show()
 
     elif (plt_type == 'bi' or plt_type == 'bistatic'):
         fig, ax = plt.subplots()
         legend_entries = []
-        
+
         for filename in filenames:
             data_file = open(filename, "r")
             line_1 = data_file.readline()
             # line 1:
-            #eps_r	2.56	mu_r	1	sigma	3.00e-02
+            # eps_r	2.56	mu_r	1	sigma	3.00e-02
             [frequency, eps_r, mu_r, sigma] = line_1.split()[1::2]
-            sphere = DielectricMaterial(float(eps_r), float(sigma), float(mu_r),0)
+            sphere = DielectricMaterial(
+                float(eps_r), float(sigma), float(mu_r), 0)
             frequency = float(frequency)
 
-            #skip next line which is column header
-            #frequency(Hz)	RCS(m^2)
+            # skip next line which is column header
+            # frequency(Hz)	RCS(m^2)
             data_file.readline()
 
-            theta, biRCS = [],[]
+            theta, biRCS = [], []
             lines = data_file.readlines()
             for line in lines:
                 values = line.split()
                 theta.append(float(values[0]))
                 biRCS.append(float(values[1]))
-            
+
             theta = np.array(theta).flatten()
             biRCS = np.array(biRCS).flatten()
             data_file.close()
 
-            #print("theta: \n", theta)
-            #print("\nbiRCS: \n", biRCS)
-            #print("\n just before plot")
-            
+            # print("theta: \n", theta)
+            # print("\nbiRCS: \n", biRCS)
+            # print("\n just before plot")
+
             plt.semilogy(theta, biRCS)
 
-            series_name = ""   
+            series_name = ""
             if sphere.name:
                 material = sphere.name
-                series_name += material #+ "radius = " + str(round(radius,2)) + " m)"         
+                # + "radius = " + str(round(radius,2)) + " m)"
+                series_name += material
             else:
-                descriptor = r'Sphere ($\epsilon_r$ = ' + str(round(sphere.epsilon_r,2)) + \
-                        r', $\sigma$ = ' + "{0:.2f}".format(sphere.sigma_e) + " S/m)" +\
-                        " at " + "{0:.2e}".format(frequency) + "Hz"
-                        #", radius = " + str(round(radius,2)) + " m)"
-                series_name +=  descriptor
-            
-            legend_entries.append(series_name) 
-        
+                descriptor = r'Sphere ($\epsilon_r$ = ' + str(round(sphere.epsilon_r, 2)) + \
+                    r', $\sigma$ = ' + "{0:.2f}".format(sphere.sigma_e) + " S/m)" +\
+                    " at " + "{0:.2e}".format(frequency) + "Hz"
+                # ", radius = " + str(round(radius,2)) + " m)"
+                series_name += descriptor
+
+            legend_entries.append(series_name)
+
         plt.grid(True, which="both", ls="--")
         plt.ylabel(r'Bi-Static RCS ($m^2$)')
         plt.xlabel(r'Angle $\theta$ (rad)')
@@ -624,7 +654,7 @@ def plotFromFile(filenames, plt_type, save_file=''):
 
         if save_file:
             save_file += ".png"
-            plt.savefig(save_file, figsize=(8,6))
+            plt.savefig(save_file, figsize=(8, 6))
         plt.show()
     else:
         print("incorrect plt_type input to plotFromFile()")
@@ -639,41 +669,40 @@ if __name__ == '__main__':
 
     background = DielectricMaterial(1,0)
     frequency = background.getPhaseVelocity(3e8 / wavelength)  / wavelength
-    
+
     sensor_location = [0,0,-1000]
     sphere = DielectricMaterial(2.56, 0.0)
     sphere = DielectricMaterial(1e8,0,1e-8,0)
-   
+
     [E_r, E_theta, E_phi, H_r, H_theta, H_phi] = \
         getDielectricSphereFieldUnderPlaneWave(radius, sphere, background, sensor_location, frequency)
     E = (np.stack((E_r,E_theta,E_phi), axis=0))
     mono_RCS = 4*np.pi* ( norm(sensor_location)**2 ) * np.sum( (E * np.conj(E)) , 0)
     '''
 
+    # print(mono_RCS)
 
-    #print(mono_RCS)
+    # plotOneMonoRCS(radius, sphere, background, mono_RCS, ratio = ratio, savefile="PEC_ratio")
 
-    #plotOneMonoRCS(radius, sphere, background, mono_RCS, ratio = ratio, savefile="PEC_ratio")
+    # (theta, bi_RCS) = Bistatic_RCS(radius, 1e9, background, sphere, 2000, 0, show_plot=0)
+    # saveBiRCSData("bistatic_perfect_dielectric_example", bi_RCS, theta, 1e9, sphere)
 
-    #(theta, bi_RCS) = Bistatic_RCS(radius, 1e9, background, sphere, 2000, 0, show_plot=0)
-    #saveBiRCSData("bistatic_perfect_dielectric_example", bi_RCS, theta, 1e9, sphere)
+    # print(convertToRatio(radius, background, wavelength = wavelength))
 
-    #print(convertToRatio(radius, background, wavelength = wavelength))
+    # print(background.name)
 
-    #print(background.name)
-
-    #testing sigma sweep, or material comparison
+    # testing sigma sweep, or material comparison
     '''
         case1 = TestCase(0.5, DielectricMaterial(2.56,0), DielectricMaterial(1,0))
         case2 = TestCase(0.5, DielectricMaterial(2.56,0.1, name = "Silicon"), DielectricMaterial(1,0))
         param1 = TestParameters([0,0,-2000], np.logspace(7,9,100))
         Compare_RCS_vs_freq([case1,case2], param1, "example_2_material_comparison")
     '''
-    
-    #testing PEC sphere
-    #(freq, mono_RCS) = RCS_vs_freq(radius = 0.5, ratio = np.arange(0.01,1.61,0.01), background_material = DielectricMaterial(1,0), sphere_material = DielectricMaterial(1e8,0,1e-8,0), sensor_location = [0,0,-2000], save_file = None, show_plot = 1)
 
-    #testing plot with ratio on x axis
+    # testing PEC sphere
+    # (freq, mono_RCS) = RCS_vs_freq(radius = 0.5, ratio = np.arange(0.01,1.61,0.01), background_material = DielectricMaterial(1,0), sphere_material = DielectricMaterial(1e8,0,1e-8,0), sensor_location = [0,0,-2000], save_file = None, show_plot = 1)
+
+    # testing plot with ratio on x axis
     '''
         radius = 0.5 #meters
         ratio = np.arange(0.01,1.61,0.01)
@@ -687,13 +716,13 @@ if __name__ == '__main__':
                         savefile = "lossy_dielectric_mono_rcs")
     '''
 
-    #testing perfect dieelctric sphere
-    #RCS_vs_freq(radius = 0.5, ratio = np.arange(0.01,1.61,0.01), background_material = DielectricMaterial(1,0), sphere_material = DielectricMaterial(2.56,0), sensor_location = [0,0,-2000], save_file = 'perfect_dielectric')
+    # testing perfect dieelctric sphere
+    # RCS_vs_freq(radius = 0.5, ratio = np.arange(0.01,1.61,0.01), background_material = DielectricMaterial(1,0), sphere_material = DielectricMaterial(2.56,0), sensor_location = [0,0,-2000], save_file = 'perfect_dielectric')
 
-    #testing lossy dielectric sphere
-    #RCS_vs_freq(radius = 0.5, ratio = np.arange(0.01,1.61,0.01), background_material = DielectricMaterial(1,0), sphere_material = DielectricMaterial(2.56,0.03), sensor_location = [0,0,-2000], save_file = 'lossy_dielectric')
-    
-    #stress-testing getNMax function: full sigma sweep
+    # testing lossy dielectric sphere
+    # RCS_vs_freq(radius = 0.5, ratio = np.arange(0.01,1.61,0.01), background_material = DielectricMaterial(1,0), sphere_material = DielectricMaterial(2.56,0.03), sensor_location = [0,0,-2000], save_file = 'lossy_dielectric')
+
+    # stress-testing getNMax function: full sigma sweep
     '''
         #auto-generating test cases from list of conductivities
         vacuum = DielectricMaterial(1,0)
@@ -718,7 +747,7 @@ if __name__ == '__main__':
         Compare_RCS_vs_freq(cases, param1, save_file = "sigma_sweep")
     '''
 
-    #testing Compare_Bistatic_RCS
+    # testing Compare_Bistatic_RCS
     '''
         vacuum = DielectricMaterial(1,0)
         radius = 0.5
@@ -746,8 +775,7 @@ if __name__ == '__main__':
         Compare_Bistatic_RCS(test_cases, test_parameters, save_file = "compare_bistatic_frequencies")
     '''
 
-        
-    #DEFAULT PLOTTING CODE
+    # DEFAULT PLOTTING CODE
     '''
         plt.loglog(frequency,mono_RCS)
         plt.grid(True, which="both", ls="--")
@@ -769,11 +797,11 @@ if __name__ == '__main__':
         plt.show()
     '''
 
-    #testing plot from file
-    #plotFromFile(['lossy_dielectric.txt', 'perfect_dielectric.txt'], 'monostatic', save_file='plot_from_file_example')
-    #plotFromFile(['bistatic_lossy_dielectric_example.txt', "bistatic_perfect_dielectric_example.txt"], 'bi', save_file='plot_from_file_example_2')
+    # testing plot from file
+    # plotFromFile(['lossy_dielectric.txt', 'perfect_dielectric.txt'], 'monostatic', save_file='plot_from_file_example')
+    # plotFromFile(['bistatic_lossy_dielectric_example.txt', "bistatic_perfect_dielectric_example.txt"], 'bi', save_file='plot_from_file_example_2')
 
-    #validating with MoM Solver Results
+    # validating with MoM Solver Results
     '''
     radius = 0.5
     frequency = 1000000000
@@ -785,7 +813,7 @@ if __name__ == '__main__':
     Bistatic_RCS(radius, frequency, background, sphere, distance, phi, save_filename ="calculations", show_plot = 0)
     plotFromFile(['sigma1e3_eaefie_bRCS_f_1000000000_Hz.txt', 'calculations.txt'], 'bi')
     '''
-    #old debugging inputs
+    # old debugging inputs
     '''
     radius = 0.5;
     sphere = DielectricMaterial(2.56,0.5)
